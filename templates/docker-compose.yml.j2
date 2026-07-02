@@ -7,6 +7,9 @@ services:
     hostname: {{ ara_container_hostname }}
     restart: unless-stopped
     tty: true
+    environment:
+      ARA_READ_LOGIN_REQUIRED: "{{ ara_read_login_required | ternary('true', 'false') }}"
+      ARA_WRITE_LOGIN_REQUIRED: "{{ ara_write_login_required | ternary('true', 'false') }}"
     expose:
       - "{{ ara_container_port }}"
     volumes:

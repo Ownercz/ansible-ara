@@ -7,6 +7,8 @@ ara_image: docker.io/recordsansible/ara-api:latest
 ara_container_name: ara-server
 ara_container_hostname: ara-server
 ara_container_port: 8000
+ara_read_login_required: false
+ara_write_login_required: false
 
 ara_nginx_image: nginx:1.27.0
 ara_nginx_container_name: ara-nginx
