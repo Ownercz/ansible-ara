@@ -2,13 +2,22 @@
 - name: "main | 1. Validate required variables"
   ansible.builtin.assert:
     that:
-      - ara_server_name is string
-      - ara_server_name | length > 0
-    fail_msg: "Set ara_server_name to a valid public DNS name for ARA deployment."
+      - ara_api_server_name is string
+      - ara_api_server_name | length > 0
+      - ara_web_server_name is string
+      - ara_web_server_name | length > 0
+    fail_msg: "Set ara_api_server_name and ara_web_server_name to valid public DNS names."
 
 - name: "main | 2. Verify docker compose is available"
   ansible.builtin.command: docker compose version
   changed_when: false
+
+- name: "main | 2.1 Validate endpoint port separation"
+  ansible.builtin.assert:
+    that:
+      - ara_api_http_port | int != ara_web_http_port | int
+      - (not ara_enable_tls) or (ara_api_https_port | int != ara_web_https_port | int)
+    fail_msg: "API and WEB published ports must be different to avoid host conflicts."
 
 - name: "main | 3. Ensure deployment directories exist"
   ansible.builtin.file:
@@ -33,7 +42,8 @@
   loop:
     - docker-compose.yml
     - nginx.conf
-    - ara.conf
+    - ara-api.conf
+    - ara-web.conf
   notify: restart ansible ara stack
 
 - name: "main | 5. Start ansible ara stack"

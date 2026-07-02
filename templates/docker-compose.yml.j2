@@ -17,21 +17,47 @@ services:
     networks:
       - ara-internal
 
-  ara-nginx:
+  ara-nginx-api:
     image: {{ ara_nginx_image }}
-    container_name: {{ ara_nginx_container_name }}
-    hostname: {{ ara_nginx_container_hostname }}
+    container_name: {{ ara_nginx_api_container_name }}
+    hostname: {{ ara_nginx_api_container_hostname }}
     restart: unless-stopped
     depends_on:
       - ara-api
     ports:
-      - "{{ ara_nginx_bind_address }}:{{ ara_http_port }}:80"
+{% if not (ara_enable_tls and ara_nginx_listen_ssl_only) %}
+      - "{{ ara_nginx_bind_address }}:{{ ara_api_http_port }}:80"
+{% endif %}
 {% if ara_enable_tls %}
-      - "{{ ara_nginx_bind_address }}:{{ ara_https_port }}:443"
+      - "{{ ara_nginx_bind_address }}:{{ ara_api_https_port }}:443"
 {% endif %}
     volumes:
       - {{ ara_compose_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro
-      - {{ ara_compose_dir }}/ara.conf:/etc/nginx/conf.d/ara.conf:ro
+      - {{ ara_compose_dir }}/ara-api.conf:/etc/nginx/conf.d/ara-api.conf:ro
+{% if ara_enable_tls %}
+      - {{ ara_tls_cert_path }}:/opt/fullchain.pem:ro
+      - {{ ara_tls_key_path }}:/opt/privkey.pem:ro
+{% endif %}
+    networks:
+      - ara-internal
+
+  ara-nginx-web:
+    image: {{ ara_nginx_image }}
+    container_name: {{ ara_nginx_web_container_name }}
+    hostname: {{ ara_nginx_web_container_hostname }}
+    restart: unless-stopped
+    depends_on:
+      - ara-api
+    ports:
+{% if not (ara_enable_tls and ara_nginx_listen_ssl_only) %}
+      - "{{ ara_nginx_bind_address }}:{{ ara_web_http_port }}:80"
+{% endif %}
+{% if ara_enable_tls %}
+      - "{{ ara_nginx_bind_address }}:{{ ara_web_https_port }}:443"
+{% endif %}
+    volumes:
+      - {{ ara_compose_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro
+      - {{ ara_compose_dir }}/ara-web.conf:/etc/nginx/conf.d/ara-web.conf:ro
 {% if ara_enable_tls %}
       - {{ ara_tls_cert_path }}:/opt/fullchain.pem:ro
       - {{ ara_tls_key_path }}:/opt/privkey.pem:ro

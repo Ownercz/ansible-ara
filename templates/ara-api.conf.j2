@@ -4,10 +4,11 @@ upstream ara_backend {
     server ara-api:{{ ara_container_port }};
 }
 
+{% if not (ara_enable_tls and ara_nginx_listen_ssl_only) %}
 server {
     listen 80;
     listen [::]:80;
-    server_name {{ ([ara_server_name] + ara_public_aliases) | join(' ') }};
+    server_name {{ ([ara_api_server_name] + ara_api_public_aliases) | join(' ') }};
     client_max_body_size {{ ara_nginx_client_max_body_size }};
 
 {% if ara_enable_tls and ara_enable_http_redirect %}
@@ -26,12 +27,13 @@ server {
     }
 {% endif %}
 }
+{% endif %}
 
 {% if ara_enable_tls %}
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name {{ ([ara_server_name] + ara_public_aliases) | join(' ') }};
+    server_name {{ ([ara_api_server_name] + ara_api_public_aliases) | join(' ') }};
     client_max_body_size {{ ara_nginx_client_max_body_size }};
 
 {{ ara_nginx_ssl_config | indent(4, true) }}
