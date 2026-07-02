@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: sw-docker-ansible-ara
+  role_name: sw_docker_ansible_ara
   author: "Radim Lipovcan"
   description: "Docker-based production deployment for Ansible ARA with Nginx frontend"
   company: ""
