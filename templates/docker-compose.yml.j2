@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  ara-api:
+    image: {{ ara_image }}
+    container_name: {{ ara_container_name }}
+    hostname: {{ ara_container_hostname }}
+    restart: unless-stopped
+    tty: true
+    expose:
+      - "{{ ara_container_port }}"
+    volumes:
+      - {{ ara_data_dir }}:/opt/ara
+    networks:
+      - ara-internal
+
+  ara-nginx:
+    image: {{ ara_nginx_image }}
+    container_name: {{ ara_nginx_container_name }}
+    hostname: {{ ara_nginx_container_hostname }}
+    restart: unless-stopped
+    depends_on:
+      - ara-api
+    ports:
+      - "{{ ara_nginx_bind_address }}:{{ ara_http_port }}:80"
+{% if ara_enable_tls %}
+      - "{{ ara_nginx_bind_address }}:{{ ara_https_port }}:443"
+{% endif %}
+    volumes:
+      - {{ ara_compose_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro
+      - {{ ara_compose_dir }}/ara.conf:/etc/nginx/conf.d/ara.conf:ro
+{% if ara_enable_tls %}
+      - {{ ara_tls_cert_path }}:/opt/fullchain.pem:ro
+      - {{ ara_tls_key_path }}:/opt/privkey.pem:ro
+{% endif %}
+    networks:
+      - ara-internal
+
+networks:
+  ara-internal:
+    name: {{ ara_network_name }}
+    driver: bridge

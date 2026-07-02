@@ -1,0 +1,51 @@
+# Ansible managed
+
+upstream ara_backend {
+    server ara-api:{{ ara_container_port }};
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ ([ara_server_name] + ara_public_aliases) | join(' ') }};
+    client_max_body_size {{ ara_nginx_client_max_body_size }};
+
+{% if ara_enable_tls and ara_enable_http_redirect %}
+    return 301 https://$host$request_uri;
+{% else %}
+    location / {
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_read_timeout 300;
+        proxy_connect_timeout 60;
+        proxy_pass http://ara_backend/;
+    }
+{% endif %}
+}
+
+{% if ara_enable_tls %}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name {{ ([ara_server_name] + ara_public_aliases) | join(' ') }};
+    client_max_body_size {{ ara_nginx_client_max_body_size }};
+
+{{ ara_nginx_ssl_config | indent(4, true) }}
+
+    location / {
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_read_timeout 300;
+        proxy_connect_timeout 60;
+        proxy_pass http://ara_backend/;
+    }
+}
+{% endif %}

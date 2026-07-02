@@ -1,0 +1,45 @@
+---
+- name: "main | 1. Validate required variables"
+  ansible.builtin.assert:
+    that:
+      - ara_server_name is string
+      - ara_server_name | length > 0
+    fail_msg: "Set ara_server_name to a valid public DNS name for ARA deployment."
+
+- name: "main | 2. Verify docker compose is available"
+  ansible.builtin.command: docker compose version
+  changed_when: false
+
+- name: "main | 3. Ensure deployment directories exist"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ ara_root_dir }}"
+    - "{{ ara_compose_dir }}"
+    - "{{ ara_root_dir }}/data"
+    - "{{ ara_data_dir }}"
+
+- name: "main | 4. Render compose and nginx configuration files"
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ ara_compose_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - docker-compose.yml
+    - nginx.conf
+    - ara.conf
+  notify: restart ansible ara stack
+
+- name: "main | 5. Start ansible ara stack"
+  ansible.builtin.command: >-
+    docker compose
+    --project-name {{ ara_compose_project_name }}
+    -f {{ ara_compose_dir }}/docker-compose.yml
+    up -d --remove-orphans
+  changed_when: false

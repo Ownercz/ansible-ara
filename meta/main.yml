@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: sw-docker-ansible-ara
+  author: "Radim Lipovcan"
+  description: "Docker-based production deployment for Ansible ARA with Nginx frontend"
+  company: ""
+  license: "MIT"
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+
+  galaxy_tags:
+    - sw
+    - docker
+    - nginx
+    - ara
+
+dependencies: []
