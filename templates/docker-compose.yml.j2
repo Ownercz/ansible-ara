@@ -1,4 +1,4 @@
-version: "3.8"
+name: "{{ ara_compose_project_name }}"
 
 services:
   ara-api:
@@ -69,3 +69,4 @@ networks:
   ara-internal:
     name: {{ ara_network_name }}
     driver: bridge
+
