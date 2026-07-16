@@ -19,6 +19,46 @@
       - (not ara_enable_tls) or (ara_api_https_port | int != ara_web_https_port | int)
     fail_msg: "API and WEB published ports must be different to avoid host conflicts."
 
+- name: "main | 2.2 Build derived host and origin lists"
+  ansible.builtin.set_fact:
+    ara_public_hosts: >-
+      {{
+        ([ara_api_server_name, ara_web_server_name] + ara_api_public_aliases + ara_web_public_aliases)
+        | reject('equalto', '')
+        | unique
+        | list
+      }}
+    ara_http_enabled: "{{ not (ara_enable_tls and ara_nginx_listen_ssl_only) }}"
+    ara_origin_schemes: >-
+      {{
+        ((['https'] if ara_enable_tls else []) + (['http'] if not (ara_enable_tls and ara_nginx_listen_ssl_only) else []))
+        | unique
+        | list
+      }}
+
+- name: "main | 2.3 Build ARA security settings"
+  ansible.builtin.set_fact:
+    ara_auto_allowed_hosts: "{{ (['127.0.0.1', 'localhost', '::1'] + ara_public_hosts) | unique | list }}"
+    ara_auto_origins: "{{ ara_origin_schemes | product(ara_public_hosts) | map('join', '://') | list }}"
+    ara_effective_allowed_hosts: >-
+      {{
+        (((ara_auto_configure_host_security | bool) | ternary(ara_auto_allowed_hosts, [])) + ara_extra_allowed_hosts)
+        | unique
+        | list
+      }}
+    ara_effective_csrf_trusted_origins: >-
+      {{
+        (((ara_auto_configure_host_security | bool) | ternary(ara_auto_origins, [])) + ara_extra_csrf_trusted_origins)
+        | unique
+        | list
+      }}
+    ara_effective_cors_origin_whitelist: >-
+      {{
+        (((ara_auto_configure_host_security | bool) | ternary(ara_auto_origins, [])) + ara_extra_cors_origin_whitelist)
+        | unique
+        | list
+      }}
+
 - name: "main | 3. Ensure deployment directories exist"
   ansible.builtin.file:
     path: "{{ item }}"

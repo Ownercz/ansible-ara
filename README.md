@@ -37,6 +37,10 @@ Install from requirements.yml:
 - ara_image: ARA image (default docker.io/recordsansible/ara-api:latest).
 - ara_read_login_required: Sets ARA_READ_LOGIN_REQUIRED (default false).
 - ara_write_login_required: Sets ARA_WRITE_LOGIN_REQUIRED (default false).
+- ara_auto_configure_host_security: Auto-generates ARA_ALLOWED_HOSTS and origin lists from endpoint hostnames.
+- ara_extra_allowed_hosts: Extra hostnames/IPs appended to ARA_ALLOWED_HOSTS.
+- ara_extra_csrf_trusted_origins: Extra origins appended to ARA_CSRF_TRUSTED_ORIGINS.
+- ara_extra_cors_origin_whitelist: Extra origins appended to ARA_CORS_ORIGIN_WHITELIST.
 - ara_nginx_image: Nginx image (default nginx:1.27.0).
 - ara_api_http_port: Host HTTP port for API endpoint (default 8088).
 - ara_api_https_port: Host HTTPS port for API endpoint (default 8444).

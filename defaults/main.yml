@@ -10,6 +10,14 @@ ara_container_port: 8000
 ara_read_login_required: false
 ara_write_login_required: false
 
+# Auto-configure Django host/origin settings from public endpoint hostnames.
+ara_auto_configure_host_security: true
+
+# Additional values appended to auto-generated security settings.
+ara_extra_allowed_hosts: []
+ara_extra_csrf_trusted_origins: []
+ara_extra_cors_origin_whitelist: []
+
 ara_nginx_image: nginx:1.27.0
 ara_nginx_api_container_name: ara-nginx-api
 ara_nginx_api_container_hostname: ara-nginx-api
@@ -24,7 +32,7 @@ ara_public_aliases: []
 # Backward compatibility: old ara_server_name maps to web endpoint.
 ara_web_server_name: "{{ ara_server_name }}"
 ara_web_public_aliases: "{{ ara_public_aliases }}"
-ara_api_server_name: ara-api.lipovcan.cz
+ara_api_server_name: airflow.lipovcan.cz
 ara_api_public_aliases: []
 
 ara_nginx_bind_address: 0.0.0.0
