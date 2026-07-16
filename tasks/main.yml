@@ -36,10 +36,13 @@
         | list
       }}
 
-- name: "main | 2.3 Build ARA security settings"
+- name: "main | 2.3 Build ARA security settings - always allowed"
   ansible.builtin.set_fact:
     ara_auto_allowed_hosts: "{{ (['127.0.0.1', 'localhost', '::1'] + ara_public_hosts) | unique | list }}"
     ara_auto_origins: "{{ ara_origin_schemes | product(ara_public_hosts) | map('join', '://') | list }}"
+
+- name: "main | 2.4 Build ARA security settings"
+  ansible.builtin.set_fact:
     ara_effective_allowed_hosts: >-
       {{
         (((ara_auto_configure_host_security | bool) | ternary(ara_auto_allowed_hosts, [])) + ara_extra_allowed_hosts)
