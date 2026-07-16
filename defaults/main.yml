@@ -7,8 +7,21 @@ ara_image: docker.io/recordsansible/ara-api:latest
 ara_container_name: ara-server
 ara_container_hostname: ara-server
 ara_container_port: 8000
+ara_external_auth: true
 ara_read_login_required: false
 ara_write_login_required: false
+
+ara_auth_dir: "{{ ara_root_dir }}/data/auth"
+
+ara_enable_api_basic_auth: true
+# save username as well as password into vault, plaintext only for demo purposes
+ara_api_basic_auth_username: ansible
+ara_api_basic_auth_password: demo
+
+ara_enable_web_basic_auth: true
+# save username as well as password into vault, plaintext only for demo purposes
+ara_web_basic_auth_username: web
+ara_web_basic_auth_password: demo
 
 # Auto-configure Django host/origin settings from public endpoint hostnames.
 ara_auto_configure_host_security: true

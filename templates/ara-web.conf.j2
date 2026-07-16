@@ -10,6 +10,10 @@ server {
     listen [::]:80;
     server_name {{ ([ara_web_server_name] + ara_web_public_aliases) | join(' ') }};
     client_max_body_size {{ ara_nginx_client_max_body_size }};
+{% if ara_enable_web_basic_auth %}
+    auth_basic "ARA Web";
+    auth_basic_user_file /etc/nginx/auth/web.htpasswd;
+{% endif %}
 
 {% if ara_enable_tls and ara_enable_http_redirect %}
     return 301 https://$host$request_uri;
@@ -35,6 +39,10 @@ server {
     listen [::]:443 ssl;
     server_name {{ ([ara_web_server_name] + ara_web_public_aliases) | join(' ') }};
     client_max_body_size {{ ara_nginx_client_max_body_size }};
+{% if ara_enable_web_basic_auth %}
+    auth_basic "ARA Web";
+    auth_basic_user_file /etc/nginx/auth/web.htpasswd;
+{% endif %}
 
 {{ ara_nginx_ssl_config | indent(4, true) }}
 

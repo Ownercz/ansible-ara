@@ -74,6 +74,25 @@
     - "{{ ara_compose_dir }}"
     - "{{ ara_root_dir }}/data"
     - "{{ ara_data_dir }}"
+    - "{{ ara_auth_dir }}"
+
+- name: "main | 3.1 Write API basic auth credentials"
+  ansible.builtin.copy:
+    dest: "{{ ara_auth_dir }}/api.htpasswd"
+    content: "{{ ara_api_basic_auth_username }}:{PLAIN}{{ ara_api_basic_auth_password }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  when: ara_enable_api_basic_auth | bool
+
+- name: "main | 3.2 Write WEB basic auth credentials"
+  ansible.builtin.copy:
+    dest: "{{ ara_auth_dir }}/web.htpasswd"
+    content: "{{ ara_web_basic_auth_username }}:{PLAIN}{{ ara_web_basic_auth_password }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  when: ara_enable_web_basic_auth | bool
 
 - name: "main | 4. Render compose and nginx configuration files"
   ansible.builtin.template:

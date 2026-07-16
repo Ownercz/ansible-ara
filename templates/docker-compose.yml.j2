@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     tty: true
     environment:
+      ARA_EXTERNAL_AUTH: "{{ ara_external_auth | ternary('true', 'false') }}"
       ARA_READ_LOGIN_REQUIRED: "{{ ara_read_login_required | ternary('true', 'false') }}"
       ARA_WRITE_LOGIN_REQUIRED: "{{ ara_write_login_required | ternary('true', 'false') }}"
       ARA_ALLOWED_HOSTS: '{{ ara_effective_allowed_hosts | to_json }}'
@@ -37,6 +38,7 @@ services:
     volumes:
       - {{ ara_compose_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro
       - {{ ara_compose_dir }}/ara-api.conf:/etc/nginx/conf.d/ara-api.conf:ro
+      - {{ ara_auth_dir }}:/etc/nginx/auth:ro
 {% if ara_enable_tls %}
       - {{ ara_tls_cert_path }}:/opt/fullchain.pem:ro
       - {{ ara_tls_key_path }}:/opt/privkey.pem:ro
@@ -61,6 +63,7 @@ services:
     volumes:
       - {{ ara_compose_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro
       - {{ ara_compose_dir }}/ara-web.conf:/etc/nginx/conf.d/ara-web.conf:ro
+      - {{ ara_auth_dir }}:/etc/nginx/auth:ro
 {% if ara_enable_tls %}
       - {{ ara_tls_cert_path }}:/opt/fullchain.pem:ro
       - {{ ara_tls_key_path }}:/opt/privkey.pem:ro

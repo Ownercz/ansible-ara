@@ -35,8 +35,16 @@ Install from requirements.yml:
 - ara_public_aliases: Backward compatibility alias mapped to ara_web_public_aliases.
 - ara_root_dir: Base deployment directory (default /opt/docker/ansible-ara).
 - ara_image: ARA image (default docker.io/recordsansible/ara-api:latest).
+- ara_external_auth: Enables ARA external auth mode (default true).
 - ara_read_login_required: Sets ARA_READ_LOGIN_REQUIRED (default false).
 - ara_write_login_required: Sets ARA_WRITE_LOGIN_REQUIRED (default false).
+- ara_auth_dir: Directory for persisted auth files (default /opt/docker/ansible-ara/data/auth).
+- ara_enable_api_basic_auth: Enables API basic auth on nginx (default true).
+- ara_api_basic_auth_username: API basic auth username (default ansible).
+- ara_api_basic_auth_password: API basic auth password (default demo).
+- ara_enable_web_basic_auth: Enables WEB basic auth on nginx (default true).
+- ara_web_basic_auth_username: WEB basic auth username (default web).
+- ara_web_basic_auth_password: WEB basic auth password (default demo).
 - ara_auto_configure_host_security: Auto-generates ARA_ALLOWED_HOSTS and origin lists from endpoint hostnames.
 - ara_extra_allowed_hosts: Extra hostnames/IPs appended to ARA_ALLOWED_HOSTS.
 - ara_extra_csrf_trusted_origins: Extra origins appended to ARA_CSRF_TRUSTED_ORIGINS.
@@ -81,3 +89,47 @@ See defaults/main.yml for complete defaults.
 The default deployment path is /opt/docker/ansible-ara and persistent ARA data is stored in /opt/docker/ansible-ara/data/server.
 By default, SSL-only mode is enabled and ports are separated: API on 8444, WEB on 8445.
 By default, two endpoint hostnames are configured: ara-api.lipovcan.cz (API) and ara.lipovcan.cz (web).
+
+## Authentication
+
+- ARA server runs with external authentication enabled (ARA_EXTERNAL_AUTH=true).
+- Nginx protects endpoints with basic auth by default:
+  - API: ansible / demo
+  - WEB: web / demo
+- Credentials are persisted on host in /opt/docker/ansible-ara/data/auth and mounted read-only into nginx containers.
+
+## How To Send Ansible Runs To ARA
+
+1. Install ARA on the Ansible control node:
+
+		pip install ara
+
+2. Enable ARA plugin paths:
+
+		export ANSIBLE_CALLBACK_PLUGINS="$(python3 -m ara.setup.callback_plugins)"
+		export ANSIBLE_ACTION_PLUGINS="$(python3 -m ara.setup.action_plugins)"
+		export ANSIBLE_LOOKUP_PLUGINS="$(python3 -m ara.setup.lookup_plugins)"
+
+3. Configure ARA HTTP client target and API credentials:
+
+		export ARA_API_CLIENT=http
+		export ARA_API_SERVER="https://airflow.lipovcan.cz:8444"
+		export ARA_API_USERNAME="ansible"
+		export ARA_API_PASSWORD="demo"
+
+4. Run playbooks normally:
+
+		ansible-playbook site.yml
+
+Equivalent ansible.cfg snippet:
+
+		[defaults]
+		callback_plugins = /path/to/ara/plugins/callback
+		action_plugins = /path/to/ara/plugins/action
+		lookup_plugins = /path/to/ara/plugins/lookup
+
+		[ara]
+		api_client = http
+		api_server = https://airflow.lipovcan.cz:8444
+		api_username = ansible
+		api_password = demo
