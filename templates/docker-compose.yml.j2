@@ -10,9 +10,9 @@ services:
     environment:
       ARA_READ_LOGIN_REQUIRED: "{{ ara_read_login_required | ternary('true', 'false') }}"
       ARA_WRITE_LOGIN_REQUIRED: "{{ ara_write_login_required | ternary('true', 'false') }}"
-      ARA_ALLOWED_HOSTS: "{{ ara_effective_allowed_hosts | to_json }}"
-      ARA_CSRF_TRUSTED_ORIGINS: "{{ ara_effective_csrf_trusted_origins | to_json }}"
-      ARA_CORS_ORIGIN_WHITELIST: "{{ ara_effective_cors_origin_whitelist | to_json }}"
+      ARA_ALLOWED_HOSTS: '{{ ara_effective_allowed_hosts | to_json }}'
+      ARA_CSRF_TRUSTED_ORIGINS: '{{ ara_effective_csrf_trusted_origins | to_json }}'
+      ARA_CORS_ORIGIN_WHITELIST: '{{ ara_effective_cors_origin_whitelist | to_json }}'
     expose:
       - "{{ ara_container_port }}"
     volumes:
