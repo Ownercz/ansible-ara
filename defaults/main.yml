@@ -75,3 +75,25 @@ ara_nginx_ssl_config: |
   ssl_prefer_server_ciphers off;
 
   ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+
+ara_prometheus_enabled: true
+ara_prometheus_build_locally: true
+ara_prometheus_image_name: ownercz/ara-prometheus-exporter
+ara_prometheus_image_version: latest
+ara_prometheus_container_name: ara-prometheus
+ara_prometheus_container_hostname: ara-prometheus
+ara_prometheus_port: 8001
+ara_prometheus_refresh_interval: 30
+ara_prometheus_playbook_limit: 1000
+ara_prometheus_task_limit: 1000
+ara_prometheus_host_limit: 1000
+ara_prometheus_login_required: false
+# save username as well as password into vault, plaintext only for demo purposes
+ara_prometheus_basic_auth_username: prometheus
+ara_prometheus_basic_auth_password: demo
+
+# Periodically save /metrics to a .prom file for node_exporter textfile collector.
+ara_prometheus_textfile_enabled: false
+ara_prometheus_textfile_dir: /var/lib/node_exporter/textfile_collector
+ara_prometheus_textfile_filename: ara_metrics.prom
+ara_prometheus_textfile_interval: 60

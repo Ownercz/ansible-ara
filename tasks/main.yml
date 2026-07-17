@@ -94,6 +94,35 @@
     mode: "0644"
   when: ara_enable_web_basic_auth | bool
 
+- name: "main | 3.3 Write Prometheus basic auth credentials"
+  ansible.builtin.copy:
+    dest: "{{ ara_auth_dir }}/prometheus.htpasswd"
+    content: "{{ ara_prometheus_basic_auth_username }}:{PLAIN}{{ ara_prometheus_basic_auth_password }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ara_prometheus_enabled | bool
+    - ara_prometheus_login_required | bool
+
+- name: "main | 3.3.1 Remove Prometheus basic auth credentials when disabled"
+  ansible.builtin.file:
+    path: "{{ ara_auth_dir }}/prometheus.htpasswd"
+    state: absent
+  when: not (ara_prometheus_enabled | bool and ara_prometheus_login_required | bool)
+
+- name: "main | 3.4 Render Prometheus Dockerfile"
+  ansible.builtin.template:
+    src: ara-prometheus.Dockerfile.j2
+    dest: "{{ ara_compose_dir }}/ara-prometheus.Dockerfile"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ara_prometheus_enabled | bool
+    - ara_prometheus_build_locally | bool
+  notify: restart ansible ara stack
+
 - name: "main | 4. Render compose and nginx configuration files"
   ansible.builtin.template:
     src: "{{ item }}.j2"

@@ -102,7 +102,7 @@ By default, two endpoint hostnames are configured: ara-api.lipovcan.cz (API) and
 
 1. Install ARA on the Ansible control node:
 
-		pip install ara
+		pip3 install ara==1.8.0
 
 2. Enable ARA plugin paths:
 
@@ -124,9 +124,9 @@ By default, two endpoint hostnames are configured: ara-api.lipovcan.cz (API) and
 Equivalent ansible.cfg snippet:
 
 		[defaults]
-		callback_plugins = /path/to/ara/plugins/callback
-		action_plugins = /path/to/ara/plugins/action
-		lookup_plugins = /path/to/ara/plugins/lookup
+		callback_plugins = /home/ownercz/.venv/lib/python3.12/site-packages/ara/plugins/callback
+		action_plugins = /home/ownercz/.venv/lib/python3.12/site-packages/ara/plugins/action
+		lookup_plugins = /home/ownercz/.venv/lib/python3.12/site-packages/ara/plugins/lookup
 
 		[ara]
 		api_client = http

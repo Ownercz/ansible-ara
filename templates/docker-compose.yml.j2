@@ -28,6 +28,9 @@ services:
     restart: unless-stopped
     depends_on:
       - ara-api
+{% if ara_prometheus_enabled %}
+      - ara-prometheus
+{% endif %}
     ports:
 {% if not (ara_enable_tls and ara_nginx_listen_ssl_only) %}
       - "{{ ara_nginx_bind_address }}:{{ ara_api_http_port }}:80"
@@ -70,6 +73,55 @@ services:
 {% endif %}
     networks:
       - ara-internal
+
+{% if ara_prometheus_enabled %}
+  ara-prometheus:
+{% if ara_prometheus_build_locally %}
+    build:
+      context: {{ ara_compose_dir }}
+      dockerfile: ara-prometheus.Dockerfile
+{% else %}
+    image: {{ ara_prometheus_image_name }}:{{ ara_prometheus_image_version }}
+{% endif %}
+    container_name: {{ ara_prometheus_container_name }}
+    hostname: {{ ara_prometheus_container_hostname }}
+    restart: unless-stopped
+    depends_on:
+      - ara-api
+    tty: true
+    environment:
+      ARA_API_CLIENT: http
+      ARA_API_SERVER: http://{{ ara_container_hostname }}:{{ ara_container_port }}
+      ARA_PROMETHEUS_PORT: "{{ ara_prometheus_port }}"
+      ARA_PROMETHEUS_TEXTFILE_ENABLED: "{{ ara_prometheus_textfile_enabled | ternary('true', 'false') }}"
+{% if ara_prometheus_textfile_enabled %}
+      ARA_PROMETHEUS_TEXTFILE_PATH: "{{ ara_prometheus_textfile_dir }}/{{ ara_prometheus_textfile_filename }}"
+      ARA_PROMETHEUS_TEXTFILE_INTERVAL: "{{ ara_prometheus_textfile_interval }}"
+{% endif %}
+    command:
+      - ara
+      - prometheus
+      - --prometheus-port
+      - "{{ ara_prometheus_port }}"
+      - --prometheus-address
+      - 0.0.0.0
+      - --refresh-interval
+      - "{{ ara_prometheus_refresh_interval }}"
+      - --playbook-limit
+      - "{{ ara_prometheus_playbook_limit }}"
+      - --task-limit
+      - "{{ ara_prometheus_task_limit }}"
+      - --host-limit
+      - "{{ ara_prometheus_host_limit }}"
+{% if ara_prometheus_textfile_enabled %}
+    volumes:
+      - {{ ara_prometheus_textfile_dir }}:{{ ara_prometheus_textfile_dir }}
+{% endif %}
+    expose:
+      - "{{ ara_prometheus_port }}"
+    networks:
+      - ara-internal
+{% endif %}
 
 networks:
   ara-internal:

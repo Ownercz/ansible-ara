@@ -1,0 +1,34 @@
+FROM ubuntu:26.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl python3 python3-pip \
+    && python3 -m pip install --break-system-packages --no-cache-dir "ara[prometheus]" \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -e' \
+    'if [ "${ARA_PROMETHEUS_TEXTFILE_ENABLED:-false}" = "true" ]; then' \
+    '    "$@" &' \
+    '    ARA_PID=$!' \
+    '    sleep 5' \
+    '    while kill -0 $ARA_PID 2>/dev/null; do' \
+    '        TMP="${ARA_PROMETHEUS_TEXTFILE_PATH}.tmp"' \
+    '        if curl -sf "http://localhost:${ARA_PROMETHEUS_PORT:-8001}/metrics" -o "${TMP}"; then' \
+    '            mv "${TMP}" "${ARA_PROMETHEUS_TEXTFILE_PATH}"' \
+    '        else' \
+    '            rm -f "${TMP}"' \
+    '        fi' \
+    '        sleep "${ARA_PROMETHEUS_TEXTFILE_INTERVAL:-60}"' \
+    '    done &' \
+    '    wait $ARA_PID' \
+    'else' \
+    '    exec "$@"' \
+    'fi' \
+    > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["ara", "prometheus"]
