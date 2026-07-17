@@ -6,6 +6,7 @@
       - ara_api_server_name | length > 0
       - ara_web_server_name is string
       - ara_web_server_name | length > 0
+      - (not ara_prometheus_enabled | bool) or (ara_prometheus_server_name is string and ara_prometheus_server_name | length > 0)
     fail_msg: "Set ara_api_server_name and ara_web_server_name to valid public DNS names."
 
 - name: "main | 2. Verify docker compose is available"
@@ -35,6 +36,16 @@
         | unique
         | list
       }}
+
+- name: "main | 2.2.1 Validate Prometheus endpoint port separation"
+  ansible.builtin.assert:
+    that:
+      - (not ara_http_enabled | bool) or (ara_prometheus_http_port | int != ara_api_http_port | int)
+      - (not ara_http_enabled | bool) or (ara_prometheus_http_port | int != ara_web_http_port | int)
+      - (not ara_enable_tls | bool) or (ara_prometheus_https_port | int != ara_api_https_port | int)
+      - (not ara_enable_tls | bool) or (ara_prometheus_https_port | int != ara_web_https_port | int)
+    fail_msg: "Prometheus published ports must be different from API/WEB published ports."
+  when: ara_prometheus_enabled | bool
 
 - name: "main | 2.3 Build ARA security settings - always allowed"
   ansible.builtin.set_fact:
@@ -142,6 +153,7 @@
     - nginx.conf
     - ara-api.conf
     - ara-web.conf
+    - ara-prometheus.conf
   notify: restart ansible ara stack
 
 - name: "main | 5. Start ansible ara stack"

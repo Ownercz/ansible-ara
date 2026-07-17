@@ -36,6 +36,8 @@ ara_nginx_api_container_name: ara-nginx-api
 ara_nginx_api_container_hostname: ara-nginx-api
 ara_nginx_web_container_name: ara-nginx-web
 ara_nginx_web_container_hostname: ara-nginx-web
+ara_nginx_prometheus_container_name: ara-nginx-prometheus
+ara_nginx_prometheus_container_hostname: ara-nginx-prometheus
 ara_network_name: ansible-ara-internal
 ara_compose_project_name: ansible-ara
 
@@ -46,12 +48,16 @@ ara_web_server_name: "{{ ara_server_name }}"
 ara_web_public_aliases: "{{ ara_public_aliases }}"
 ara_api_server_name: airflow.lipovcan.cz
 ara_api_public_aliases: []
+ara_prometheus_server_name: "{{ ara_api_server_name }}"
+ara_prometheus_public_aliases: []
 
 ara_nginx_bind_address: 0.0.0.0
 ara_api_http_port: 8088
 ara_api_https_port: 8444
 ara_web_http_port: 8089
 ara_web_https_port: 8445
+ara_prometheus_http_port: 8090
+ara_prometheus_https_port: 8446
 ara_enable_tls: true
 ara_enable_http_redirect: false
 ara_nginx_listen_ssl_only: true

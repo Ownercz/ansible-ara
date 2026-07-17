@@ -21,6 +21,7 @@ Install from requirements.yml:
 - Deploys recordsansible/ara-api with persistent storage.
 - Fronts ARA with Nginx (HTTP and optional HTTPS).
 - Uses separate ara-api.conf and ara-web.conf vhosts in ara-nginx.
+- Adds dedicated ara-prometheus.conf vhost for metrics endpoint with optional basic auth.
 - Publishes API and WEB through separate nginx containers to avoid host port conflicts.
 - Uses idempotent template-driven configuration.
 - Supports handler-based stack recreation after config changes.
@@ -52,10 +53,14 @@ Install from requirements.yml:
 
 Note: Internal ARA container hostnames (for example ara-server) are always appended to ARA_ALLOWED_HOSTS so internal services such as ara-prometheus can query the API directly.
 - ara_nginx_image: Nginx image (default nginx:1.27.0).
+- ara_prometheus_server_name: Public hostname for Prometheus metrics endpoint.
+- ara_prometheus_public_aliases: Additional hostnames for Prometheus metrics endpoint.
 - ara_api_http_port: Host HTTP port for API endpoint (default 8088).
 - ara_api_https_port: Host HTTPS port for API endpoint (default 8444).
 - ara_web_http_port: Host HTTP port for WEB endpoint (default 8089).
 - ara_web_https_port: Host HTTPS port for WEB endpoint (default 8445).
+- ara_prometheus_http_port: Host HTTP port for Prometheus metrics endpoint (default 8090).
+- ara_prometheus_https_port: Host HTTPS port for Prometheus metrics endpoint (default 8446).
 - ara_enable_tls: Enable HTTPS listener and certificate usage.
 - ara_nginx_listen_ssl_only: When true and TLS is enabled, expose/listen only SSL (default true).
 - ara_tls_cert_path: TLS certificate path on host.
