@@ -74,34 +74,34 @@ services:
     networks:
       - ara-internal
 
-    {% if ara_prometheus_enabled %}
-      ara-nginx-prometheus:
-        image: {{ ara_nginx_image }}
-        container_name: {{ ara_nginx_prometheus_container_name }}
-        hostname: {{ ara_nginx_prometheus_container_hostname }}
-        restart: unless-stopped
-        depends_on:
+{%- if ara_prometheus_enabled %}
+  ara-nginx-prometheus:
+    image: {{ ara_nginx_image }}
+    container_name: {{ ara_nginx_prometheus_container_name }}
+    hostname: {{ ara_nginx_prometheus_container_hostname }}
+    restart: unless-stopped
+    depends_on:
       - ara-prometheus
-        ports:
-    {% if not (ara_enable_tls and ara_nginx_listen_ssl_only) %}
+    ports:
+{% if not (ara_enable_tls and ara_nginx_listen_ssl_only) %}
       - "{{ ara_nginx_bind_address }}:{{ ara_prometheus_http_port }}:80"
-    {% endif %}
-    {% if ara_enable_tls %}
+{% endif %}
+{% if ara_enable_tls %}
       - "{{ ara_nginx_bind_address }}:{{ ara_prometheus_https_port }}:443"
-    {% endif %}
-        volumes:
+{% endif %}
+    volumes:
       - {{ ara_compose_dir }}/nginx.conf:/etc/nginx/nginx.conf:ro
       - {{ ara_compose_dir }}/ara-prometheus.conf:/etc/nginx/conf.d/ara-prometheus.conf:ro
       - {{ ara_auth_dir }}:/etc/nginx/auth:ro
-    {% if ara_enable_tls %}
+{% if ara_enable_tls %}
       - {{ ara_tls_cert_path }}:/opt/fullchain.pem:ro
       - {{ ara_tls_key_path }}:/opt/privkey.pem:ro
-    {% endif %}
-        networks:
+{% endif %}
+    networks:
       - ara-internal
-    {% endif %}
+{%- endif %}
 
-{% if ara_prometheus_enabled %}
+{%- if ara_prometheus_enabled %}
   ara-prometheus:
 {% if ara_prometheus_build_locally %}
     build:
@@ -148,7 +148,7 @@ services:
       - "{{ ara_prometheus_port }}"
     networks:
       - ara-internal
-{% endif %}
+{%- endif %}
 
 networks:
   ara-internal:
