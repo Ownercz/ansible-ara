@@ -75,7 +75,7 @@ services:
       - ara-internal
 
 
-{%- if ara_prometheus_enabled %}
+{% if ara_prometheus_enabled %}
   ara-nginx-prometheus:
     image: {{ ara_nginx_image }}
     container_name: {{ ara_nginx_prometheus_container_name }}
@@ -100,9 +100,9 @@ services:
 {% endif %}
     networks:
       - ara-internal
-{%- endif %}
+{% endif %}
 
-{%- if ara_prometheus_enabled %}
+{% if ara_prometheus_enabled %}
   ara-prometheus:
 {% if ara_prometheus_build_locally %}
     build:
@@ -149,7 +149,7 @@ services:
       - "{{ ara_prometheus_port }}"
     networks:
       - ara-internal
-{%- endif %}
+{% endif %}
 
 networks:
   ara-internal:
