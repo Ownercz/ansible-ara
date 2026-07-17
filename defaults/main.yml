@@ -92,13 +92,13 @@ ara_prometheus_refresh_interval: 30
 ara_prometheus_playbook_limit: 1000
 ara_prometheus_task_limit: 1000
 ara_prometheus_host_limit: 1000
-ara_prometheus_login_required: false
+ara_prometheus_login_required: true
 # save username as well as password into vault, plaintext only for demo purposes
 ara_prometheus_basic_auth_username: prometheus
 ara_prometheus_basic_auth_password: demo
 
 # Periodically save /metrics to a .prom file for node_exporter textfile collector.
-ara_prometheus_textfile_enabled: false
+ara_prometheus_textfile_enabled: true
 ara_prometheus_textfile_dir: /var/lib/node_exporter/textfile_collector
 ara_prometheus_local_textfile_dir: /var/lib/node_exporter/
 ara_prometheus_textfile_filename: ara_metrics.prom
