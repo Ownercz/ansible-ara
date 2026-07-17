@@ -74,6 +74,7 @@ services:
     networks:
       - ara-internal
 
+
 {%- if ara_prometheus_enabled %}
   ara-nginx-prometheus:
     image: {{ ara_nginx_image }}
