@@ -27,7 +27,7 @@ ara_web_basic_auth_password: demo
 ara_auto_configure_host_security: true
 
 # Additional values appended to auto-generated security settings.
-ara_extra_allowed_hosts: []
+ara_extra_allowed_hosts: ["ara-prometheus"]
 ara_extra_csrf_trusted_origins: []
 ara_extra_cors_origin_whitelist: []
 
@@ -39,10 +39,9 @@ ara_nginx_web_container_hostname: ara-nginx-web
 ara_network_name: ansible-ara-internal
 ara_compose_project_name: ansible-ara
 
-ara_server_name: ara.lipovcan.cz
+ara_server_name: airflow.lipovcan.cz
 ara_public_aliases: []
 
-# Backward compatibility: old ara_server_name maps to web endpoint.
 ara_web_server_name: "{{ ara_server_name }}"
 ara_web_public_aliases: "{{ ara_public_aliases }}"
 ara_api_server_name: airflow.lipovcan.cz

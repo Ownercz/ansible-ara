@@ -49,6 +49,8 @@ Install from requirements.yml:
 - ara_extra_allowed_hosts: Extra hostnames/IPs appended to ARA_ALLOWED_HOSTS.
 - ara_extra_csrf_trusted_origins: Extra origins appended to ARA_CSRF_TRUSTED_ORIGINS.
 - ara_extra_cors_origin_whitelist: Extra origins appended to ARA_CORS_ORIGIN_WHITELIST.
+
+Note: Internal ARA container hostnames (for example ara-server) are always appended to ARA_ALLOWED_HOSTS so internal services such as ara-prometheus can query the API directly.
 - ara_nginx_image: Nginx image (default nginx:1.27.0).
 - ara_api_http_port: Host HTTP port for API endpoint (default 8088).
 - ara_api_https_port: Host HTTPS port for API endpoint (default 8444).
