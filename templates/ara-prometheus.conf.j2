@@ -18,7 +18,7 @@ server {
 {% endif %}
 
 {% if ara_enable_tls and ara_enable_http_redirect %}
-    return 301 https://$host$request_uri;
+    return 301 https://$host:{{ ara_prometheus_https_port }}$request_uri;
 {% else %}
     location = /metrics {
         proxy_http_version 1.1;

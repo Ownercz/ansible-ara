@@ -22,7 +22,7 @@ server {
 {% endif %}
 
 {% if ara_enable_tls and ara_enable_http_redirect %}
-    return 301 https://$host$request_uri;
+    return 301 https://$host:{{ ara_api_https_port }}$request_uri;
 {% else %}
 {% if ara_prometheus_enabled %}
     location = /metrics {
