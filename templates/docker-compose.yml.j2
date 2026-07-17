@@ -115,7 +115,7 @@ services:
       - "{{ ara_prometheus_host_limit }}"
 {% if ara_prometheus_textfile_enabled %}
     volumes:
-      - {{ ara_prometheus_textfile_dir }}:{{ ara_prometheus_textfile_dir }}
+      - {{ ara_prometheus_local_textfile_dir }}:{{ ara_prometheus_textfile_dir }}
 {% endif %}
     expose:
       - "{{ ara_prometheus_port }}"

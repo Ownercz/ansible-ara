@@ -95,5 +95,6 @@ ara_prometheus_basic_auth_password: demo
 # Periodically save /metrics to a .prom file for node_exporter textfile collector.
 ara_prometheus_textfile_enabled: false
 ara_prometheus_textfile_dir: /var/lib/node_exporter/textfile_collector
+ara_prometheus_local_textfile_dir: /var/lib/node_exporter/
 ara_prometheus_textfile_filename: ara_metrics.prom
 ara_prometheus_textfile_interval: 60
