@@ -83,6 +83,10 @@ ara_prometheus_image_version: latest
 ara_prometheus_container_name: ara-prometheus
 ara_prometheus_container_hostname: ara-prometheus
 ara_prometheus_port: 8001
+ara_prometheus_server_name: "{{ ara_web_server_name }}"
+ara_prometheus_public_aliases: []
+ara_prometheus_http_port: 8090
+ara_prometheus_https_port: 8446
 ara_prometheus_refresh_interval: 30
 ara_prometheus_playbook_limit: 1000
 ara_prometheus_task_limit: 1000

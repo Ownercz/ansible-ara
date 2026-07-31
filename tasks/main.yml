@@ -6,8 +6,8 @@
       - ara_api_server_name | length > 0
       - ara_web_server_name is string
       - ara_web_server_name | length > 0
-      - (not ara_prometheus_enabled | bool) or (ara_prometheus_server_name is string and ara_prometheus_server_name | length > 0)
-    fail_msg: "Set ara_api_server_name and ara_web_server_name to valid public DNS names."
+      - (not ara_prometheus_enabled | bool) or ((ara_prometheus_server_name | default('')) | length > 0)
+    fail_msg: "Set ara_api_server_name, ara_web_server_name and (if ara_prometheus_enabled) ara_prometheus_server_name to valid public DNS names."
 
 - name: "main | 2. Verify docker compose is available"
   ansible.builtin.command: docker compose version
