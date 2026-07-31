@@ -129,7 +129,19 @@
     state: absent
   when: not (ara_prometheus_enabled | bool and ara_prometheus_login_required | bool)
 
-- name: "main | 3.4 Render Prometheus Dockerfile"
+- name: "main | 3.4 Render Prometheus entrypoint script"
+  ansible.builtin.template:
+    src: ara-prometheus-entrypoint.sh.j2
+    dest: "{{ ara_compose_dir }}/ara-prometheus-entrypoint.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - ara_prometheus_enabled | bool
+    - ara_prometheus_build_locally | bool
+  notify: restart ansible ara stack
+
+- name: "main | 3.5 Render Prometheus Dockerfile"
   ansible.builtin.template:
     src: ara-prometheus.Dockerfile.j2
     dest: "{{ ara_compose_dir }}/ara-prometheus.Dockerfile"
