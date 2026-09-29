@@ -92,6 +92,24 @@ ara_prometheus_playbook_limit: 1000
 ara_prometheus_task_limit: 1000
 ara_prometheus_host_limit: 1000
 ara_prometheus_login_required: false
+
+# Ship our extended exporter (files/ara-prometheus-exporter.py) by overwriting the
+# pip-installed one in the image. Optionally pin the ara version it is built on for
+# reproducible builds (empty = latest release from PyPI).
+ara_prometheus_patch_exporter: true
+ara_prometheus_ara_version: ""
+
+# Tier 2 breakdown toggles for the extended exporter. The bounded ones are on by
+# default; task-name is high cardinality and off unless you scope it with an
+# allowlist. Ignored when ara_prometheus_patch_exporter is false.
+ara_prometheus_playbook_name_breakdown: true
+ara_prometheus_inventory_breakdown: true
+ara_prometheus_limit_breakdown: true
+ara_prometheus_tags_breakdown: true
+ara_prometheus_role_breakdown: true
+ara_prometheus_action_breakdown: true
+ara_prometheus_task_name_breakdown: false
+ara_prometheus_task_name_allowlist: []
 # save username as well as password into vault, plaintext only for demo purposes
 ara_prometheus_basic_auth_username: prometheus
 ara_prometheus_basic_auth_password: demo

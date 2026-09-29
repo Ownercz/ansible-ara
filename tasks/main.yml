@@ -141,6 +141,19 @@
     - ara_prometheus_build_locally | bool
   notify: restart ansible ara stack
 
+- name: "main | 3.4.1 Copy extended Prometheus exporter into build context"
+  ansible.builtin.copy:
+    src: ara-prometheus-exporter.py
+    dest: "{{ ara_compose_dir }}/ara-prometheus-exporter.py"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ara_prometheus_enabled | bool
+    - ara_prometheus_build_locally | bool
+    - ara_prometheus_patch_exporter | bool
+  notify: restart ansible ara stack
+
 - name: "main | 3.5 Render Prometheus Dockerfile"
   ansible.builtin.template:
     src: ara-prometheus.Dockerfile.j2
