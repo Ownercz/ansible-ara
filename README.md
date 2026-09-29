@@ -61,6 +61,11 @@ Note: Internal ARA container hostnames (for example ara-server) are always appen
 - ara_web_https_port: Host HTTPS port for WEB endpoint (default 8445).
 - ara_prometheus_http_port: Host HTTP port for Prometheus metrics endpoint (default 8090).
 - ara_prometheus_https_port: Host HTTPS port for Prometheus metrics endpoint (default 8446).
+- ara_prometheus_patch_exporter: Overwrite the pip-installed exporter with the extended one in files/ (default true).
+- ara_prometheus_ara_version: Pin the ara version the exporter image is built on for reproducible builds (default "" = latest).
+- ara_prometheus_playbook_name_breakdown / _inventory_breakdown / _limit_breakdown / _tags_breakdown: Extra low-cardinality playbook breakdowns by name, inventory, --limit (boolean) and --tags/--skip-tags (default true).
+- ara_prometheus_role_breakdown / _action_breakdown: Extra task breakdowns by role and module (default true).
+- ara_prometheus_task_name_breakdown: Per-task-name breakdown; high cardinality, off by default. Bound it with ara_prometheus_task_name_allowlist.
 - ara_enable_tls: Enable HTTPS listener and certificate usage.
 - ara_nginx_listen_ssl_only: When true and TLS is enabled, expose/listen only SSL (default true).
 - ara_tls_cert_path: TLS certificate path on host.

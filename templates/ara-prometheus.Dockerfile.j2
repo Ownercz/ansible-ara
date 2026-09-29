@@ -5,11 +5,29 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl python3 python3-venv \
     && python3 -m venv /opt/ara-venv \
+{% if ara_prometheus_ara_version %}
+    && /opt/ara-venv/bin/pip install --no-cache-dir "ara[prometheus]=={{ ara_prometheus_ara_version }}" \
+{% else %}
     && /opt/ara-venv/bin/pip install --no-cache-dir "ara[prometheus]" \
+{% endif %}
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/ara-venv/bin:$PATH"
+
+{% if ara_prometheus_patch_exporter %}
+# Ship our extended prometheus exporter (extra low-cardinality breakdowns by
+# playbook/inventory/limit/tags and by role/action/task) by overwriting the one
+# pip installed. The destination is resolved from Python so it does not depend on
+# the interpreter's minor version, and a sanity import fails the build if the
+# patched file is broken or incompatible with the pinned ara version.
+COPY ara-prometheus-exporter.py /tmp/ara-prometheus-exporter.py
+RUN set -eux; \
+    dst="$(/opt/ara-venv/bin/python -c 'import ara.cli.prometheus as m; print(m.__file__)')"; \
+    cp /tmp/ara-prometheus-exporter.py "$dst"; \
+    rm -f /tmp/ara-prometheus-exporter.py; \
+    /opt/ara-venv/bin/python -c 'import ara.cli.prometheus'
+{% endif %}
 
 # Entrypoint optionally runs a background textfile writer loop alongside the
 # ara prometheus HTTP server. When textfile export is disabled it simply
