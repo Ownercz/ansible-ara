@@ -58,16 +58,38 @@ Install from requirements.yml:
 | `ara_prometheus_enabled` / `ara_prometheus_build_locally` | `true` / `true` | Enable metrics and build the Prometheus image locally. |
 | `ara_prometheus_patch_exporter` | `true` | Include the extended exporter in the local image. |
 | `ara_prometheus_ara_version` | `""` | Pin the ARA version in the local image; empty uses the latest release. |
-| `ara_prometheus_playbook_name_breakdown` / `ara_prometheus_inventory_breakdown` | `true` / `true` | Break down metrics by playbook name / inventory. |
-| `ara_prometheus_limit_breakdown` / `ara_prometheus_tags_breakdown` | `true` / `true` | Break down metrics by limit / tags. |
-| `ara_prometheus_role_breakdown` / `ara_prometheus_action_breakdown` | `true` / `true` | Break down task metrics by role / action. |
+| `ara_prometheus_playbook_breakdown` / `ara_prometheus_task_breakdown` | `true` / `true` | Emit the wide `ara_playbook_runs` / `ara_task_runs` series and counters. |
+| `ara_prometheus_tags_breakdown` | `true` | Emit list-valued tag breakdowns (`ara_playbooks_by_tag` / `_by_skip_tag` / `ara_tasks_by_tag`). |
+| `ara_prometheus_count_limited_runs` | `false` | Include `--limit` partial runs in the wide run metrics. |
 | `ara_prometheus_task_name_breakdown` | `false` | Enable high-cardinality per-task-name metrics. |
 | `ara_prometheus_task_name_allowlist` | `[]` | Restrict task-name metrics to specific names. |
 | `ara_enable_tls` | `true` | Enable HTTPS listeners and certificates. |
 | `ara_nginx_listen_ssl_only` | `true` | Publish only HTTPS when TLS is enabled. |
 | `ara_tls_cert_path` / `ara_tls_key_path` | `/opt/ssl/cert.pem` / `/opt/ssl/cert.key` | TLS certificate / private key paths on the host. |
 
-Internal ARA container hostnames (for example `ara-server`) are always appended to `ARA_ALLOWED_HOSTS` so Prometheus can query the API directly. See [defaults/main.yml](defaults/main.yml) for all available settings.
+Note: Internal ARA container hostnames (for example ara-server) are always appended to ARA_ALLOWED_HOSTS so internal services such as ara-prometheus can query the API directly.
+- ara_nginx_image: Nginx image (default nginx:1.27.0).
+- ara_prometheus_server_name: Public hostname for Prometheus metrics endpoint.
+- ara_prometheus_public_aliases: Additional hostnames for Prometheus metrics endpoint.
+- ara_api_http_port: Host HTTP port for API endpoint (default 8088).
+- ara_api_https_port: Host HTTPS port for API endpoint (default 8444).
+- ara_web_http_port: Host HTTP port for WEB endpoint (default 8089).
+- ara_web_https_port: Host HTTPS port for WEB endpoint (default 8445).
+- ara_prometheus_http_port: Host HTTP port for Prometheus metrics endpoint (default 8090).
+- ara_prometheus_https_port: Host HTTPS port for Prometheus metrics endpoint (default 8446).
+- ara_prometheus_patch_exporter: Overwrite the pip-installed exporter with the extended one in files/ (default true).
+- ara_prometheus_ara_version: Pin the ara version the exporter image is built on for reproducible builds (default "" = latest).
+- ara_prometheus_playbook_breakdown: Emit the wide ara_playbook_runs{playbook,inventory,status} series + counter (default true).
+- ara_prometheus_task_breakdown: Emit the wide ara_task_runs{role,action,status} series + counter (default true).
+- ara_prometheus_tags_breakdown: Emit list-valued tag breakdowns (ara_playbooks_by_tag / _by_skip_tag / ara_tasks_by_tag) (default true).
+- ara_prometheus_count_limited_runs: Include --limit partial runs in ara_playbook_runs; off by default as partial runs skew run-over-run comparisons.
+- ara_prometheus_task_name_breakdown: Per-task-name breakdown; high cardinality, off by default. Bound it with ara_prometheus_task_name_allowlist.
+- ara_enable_tls: Enable HTTPS listener and certificate usage.
+- ara_nginx_listen_ssl_only: When true and TLS is enabled, expose/listen only SSL (default true).
+- ara_tls_cert_path: TLS certificate path on host.
+- ara_tls_key_path: TLS private key path on host.
+
+See [defaults/main.yml](defaults/main.yml) for all available settings.
 
 Changes to Compose or Nginx configuration recreate the stack. When a local Prometheus build input (Dockerfile, entrypoint, or exporter) changes, the same handler runs `docker compose up -d --force-recreate --build --remove-orphans`. Without build input changes, it omits `--build`.
 

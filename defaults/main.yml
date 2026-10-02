@@ -99,15 +99,19 @@ ara_prometheus_login_required: false
 ara_prometheus_patch_exporter: true
 ara_prometheus_ara_version: ""
 
-# Tier 2 breakdown toggles for the extended exporter. The bounded ones are on by
-# default; task-name is high cardinality and off unless you scope it with an
+# Tier 2 breakdown toggles for the extended exporter. The wide run breakdowns are
+# on by default; task-name is high cardinality and off unless you scope it with an
 # allowlist. Ignored when ara_prometheus_patch_exporter is false.
-ara_prometheus_playbook_name_breakdown: true
-ara_prometheus_inventory_breakdown: true
-ara_prometheus_limit_breakdown: true
+# - playbook_breakdown: wide ara_playbook_runs{playbook,inventory,status} (+ counter)
+# - task_breakdown:     wide ara_task_runs{role,action,status} (+ counter)
+# - tags_breakdown:     ara_playbooks_by_tag / _by_skip_tag / ara_tasks_by_tag
+# - count_limited_runs: include --limit partial runs in ara_playbook_runs (off: they
+#                       touch a host subset and skew run-over-run comparisons)
+# - task_name_breakdown + allowlist: opt-in ara_tasks_by_name (high cardinality)
+ara_prometheus_playbook_breakdown: true
+ara_prometheus_task_breakdown: true
 ara_prometheus_tags_breakdown: true
-ara_prometheus_role_breakdown: true
-ara_prometheus_action_breakdown: true
+ara_prometheus_count_limited_runs: false
 ara_prometheus_task_name_breakdown: false
 ara_prometheus_task_name_allowlist: []
 # save username as well as password into vault, plaintext only for demo purposes
