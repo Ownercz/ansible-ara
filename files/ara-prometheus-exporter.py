@@ -205,19 +205,22 @@ def _tag_values(playbook, key):
     return tags or ["unset"]
 
 
-def _inventory_values(playbook):
-    """The inventory sources a playbook ran with, reduced to their basenames to keep
-    the label bounded (full paths would be noisier without adding signal)."""
+def _inventory_label(playbook):
+    """The inventory a playbook ran with as a single scalar label value: the
+    basename(s) of its --inventory sources, joined when there are several. Kept
+    scalar (one value per run) so it can be a label on the wide ara_playbook_runs
+    metric without a multi-inventory run splitting into several double-counted
+    series. Empty becomes 'unknown'."""
     sources = [_basename(str(s)) for s in _as_list(_arguments(playbook).get("inventory"))]
     sources = [s for s in sources if s]
-    return sources or ["unknown"]
+    return ",".join(sources) if sources else "unknown"
 
 
-def _limited_value(playbook):
-    """Whether the run was restricted with --limit (arguments.subset), as a
-    boolean-ish label. The raw pattern is deliberately not exposed: it is
-    effectively unbounded (arbitrary host globs) and would wreck cardinality."""
-    return ["true" if _arguments(playbook).get("subset") else "false"]
+def _is_limited(playbook):
+    """Whether the run was restricted with --limit (arguments.subset). The raw
+    host pattern is deliberately never exposed as a label: it is effectively
+    unbounded (arbitrary host globs) and would wreck cardinality."""
+    return bool(_arguments(playbook).get("subset"))
 
 
 class _MonotonicCounter:
@@ -234,7 +237,10 @@ class _MonotonicCounter:
     each own an instance.
 
     A dimension is a (key, extractor) pair where extractor(obj) returns the list
-    of label values that object contributes to for that dimension.
+    of label-value tuples that object contributes to for that dimension. A tuple
+    has one element for a single-label dimension (e.g. controller) and several
+    for a wide multi-label dimension (e.g. (playbook, inventory)); list-valued
+    dimensions simply return several one-element tuples.
     """
 
     def __init__(self, terminal_statuses):
@@ -244,14 +250,14 @@ class _MonotonicCounter:
         self.low_water = 0
 
     def update(self, objects, dimensions):
-        # Zero-seed every observed (dimension, value) for each terminal status so
-        # increase()/rate() can observe a series' first real increment (a series
-        # born mid-range would otherwise silently drop its first count).
+        # Zero-seed every observed (dimension, value-tuple) for each terminal
+        # status so increase()/rate() can observe a series' first real increment
+        # (a series born mid-range would otherwise silently drop its first count).
         for obj in objects:
             for dim_key, extractor in dimensions:
-                for value in extractor(obj):
+                for values in extractor(obj):
                     for status in self.terminal_statuses:
-                        self.totals.setdefault((dim_key, value, status), 0)
+                        self.totals.setdefault((dim_key, values, status), 0)
 
         for obj in objects:
             pk = obj["id"]
@@ -261,8 +267,8 @@ class _MonotonicCounter:
                 continue  # still running; count it on a later refresh
             status = obj["status"]
             for dim_key, extractor in dimensions:
-                for value in extractor(obj):
-                    key = (dim_key, value, status)
+                for values in extractor(obj):
+                    key = (dim_key, values, status)
                     self.totals[key] = self.totals.get(key, 0) + 1
             self.counted_ids.add(pk)
 
@@ -279,17 +285,17 @@ class _MonotonicCounter:
 
     def emit(self, dim_meta):
         """Yield one CounterMetricFamily per dimension. dim_meta maps a dimension
-        key to (counter metric name, label name, help text)."""
+        key to (counter metric name, [label names], help text)."""
         by_dim = {}
-        for (dim_key, value, status), count in sorted(self.totals.items()):
-            by_dim.setdefault(dim_key, []).append((value, status, count))
+        for (dim_key, values, status), count in sorted(self.totals.items()):
+            by_dim.setdefault(dim_key, []).append((values, status, count))
         for dim_key, rows in by_dim.items():
             if dim_key not in dim_meta:
                 continue
-            counter_name, label_name, help_text = dim_meta[dim_key]
-            counter = CounterMetricFamily(counter_name, help_text, labels=[label_name, "status"])
-            for value, status, count in rows:
-                counter.add_metric([value, status], count)
+            counter_name, label_names, help_text = dim_meta[dim_key]
+            counter = CounterMetricFamily(counter_name, help_text, labels=[*label_names, "status"])
+            for values, status, count in rows:
+                counter.add_metric([*values, status], count)
             yield counter
 
 
@@ -336,12 +342,10 @@ class AraCollector(object):
         per_playbook_limit=0,
         per_task_limit=0,
         per_host_limit=0,
-        playbook_name_breakdown=False,
-        inventory_breakdown=False,
-        limit_breakdown=False,
-        tags_breakdown=False,
-        role_breakdown=False,
-        action_breakdown=False,
+        playbook_breakdown=True,
+        task_breakdown=True,
+        tags_breakdown=True,
+        count_limited_runs=False,
         task_name_breakdown=False,
         task_name_allowlist=None,
         refresh_interval=30,
@@ -364,14 +368,17 @@ class AraCollector(object):
         self.per_host_limit = per_host_limit
         # Tier 2 breakdown toggles. The aggregated, windowed breakdowns below reuse
         # the --playbook-limit / --task-limit windows; these flags just decide which
-        # label dimensions to emit. The safe (bounded) ones default on; task name is
-        # high cardinality and defaults off, optionally bounded by an allowlist.
-        self.playbook_name_breakdown = playbook_name_breakdown
-        self.inventory_breakdown = inventory_breakdown
-        self.limit_breakdown = limit_breakdown
+        # label dimensions to emit. playbook_breakdown emits the wide
+        # ara_playbook_runs{playbook, inventory} series, task_breakdown the wide
+        # ara_task_runs{role, action} series, tags_breakdown the list-valued tag
+        # series. count_limited_runs decides whether --limit partial runs are folded
+        # into ara_playbook_runs (off by default: they touch a host subset and would
+        # distort run-over-run comparisons). Task name is high cardinality and
+        # defaults off, optionally bounded by an allowlist.
+        self.playbook_breakdown = playbook_breakdown
+        self.task_breakdown = task_breakdown
         self.tags_breakdown = tags_breakdown
-        self.role_breakdown = role_breakdown
-        self.action_breakdown = action_breakdown
+        self.count_limited_runs = count_limited_runs
         self.task_name_breakdown = task_name_breakdown
         self.task_name_allowlist = set(task_name_allowlist or [])
         self.refresh_interval = refresh_interval
@@ -606,19 +613,25 @@ class AraCollector(object):
 
     def _collect_playbook_breakdowns(self):
         """
-        Tier 2: from the most recent playbooks, produce two kinds of series
-        grouped by controller, ansible_version, python_version and user:
+        Tier 2: from the most recent playbooks, produce windowed gauges and
+        matching monotonic counters.
 
-        - Windowed gauges (ara_playbooks_by_*): a snapshot of how many playbooks
-          are currently in the window per (value, status). Good for the current
-          mix, e.g. watching the ansible_version mix during an upgrade.
-        - Monotonic counters (ara_recorded_playbooks_by_*): running totals per
-          (value, status) for Grafana to use with increase()/rate(). These are
-          exact, unlike delta() on the gauges. See contrib/prometheus/README.rst for why.
+        - The wide ara_playbook_runs{playbook, inventory, status} series (gated by
+          playbook_breakdown) carries several correlated scalar labels on one
+          metric, so Grafana/PromQL can slice it (sum by (playbook) (...)), filter
+          it ({inventory="prod.ini"}) and correlate dimensions in a single query.
+          --limit partial runs are skipped unless count_limited_runs is set.
+        - Single-label gauges ara_playbooks_by_{controller,ansible_version,
+          python_version,user} keep the fleet/environment views additive.
+        - List-valued ara_playbooks_by_tag / _by_skip_tag (gated by tags_breakdown)
+          stay on their own metrics so a run carrying several tags is not
+          double-counted in the wide run series.
 
-        Each grouping is a separate metric so cardinality stays additive rather
-        than multiplicative. The counters add no cardinality over the gauges: the
-        playbook id used to avoid double-counting is an internal watermark, not a
+        Each grouping also has a monotonic counter (ara_recorded_*): running totals
+        per (labels, status) for Grafana to use with increase()/rate(). These are
+        exact, unlike delta() on the gauges. See contrib/prometheus/README.rst for
+        why. The counters add no cardinality over the gauges: the playbook id used
+        to avoid double-counting is an internal watermark, not a
         label.
         """
         response = self.client.get("/api/v1/playbooks", order="-id", limit=self.playbook_limit)
@@ -630,68 +643,90 @@ class AraCollector(object):
             value=len(playbooks),
         )
 
-        # Each dimension is (key, gauge metric name, label name, extractor). The
-        # extractor returns the list of label values a playbook contributes to for
-        # that dimension: a single value for scalar dimensions (controller, ...) or
-        # several for list dimensions (the tags a run carried). One metric per
-        # dimension keeps cardinality additive rather than multiplicative.
+        # Each dimension is (key, gauge name, counter name, [label names], extractor).
+        # The extractor returns the list of label-value tuples a playbook contributes
+        # to for that dimension. The single-label dimensions below (controller, ...)
+        # and the list-valued tag dimensions stay additive -- one metric each. The
+        # wide ara_playbook_runs dimension deliberately carries several *correlated,
+        # scalar* labels (playbook + inventory) on one metric so you can slice/dice
+        # and correlate in PromQL (sum by (playbook) (...), {inventory="prod.ini"},
+        # ...); its cardinality is the number of distinct (playbook, inventory) pairs
+        # actually observed, which is small because a playbook runs against few
+        # inventories. List-valued dimensions (tags) are kept off the wide metric on
+        # purpose: a run carrying several tags would split into several series and be
+        # double-counted in sum(ara_playbook_runs).
         dimensions = [
-            ("controller", "ara_playbooks_by_controller", "controller",
-                lambda pb: [pb.get("controller") or "unknown"]),
-            ("ansible_version", "ara_playbooks_by_ansible_version", "ansible_version",
-                lambda pb: [pb.get("ansible_version") or "unknown"]),
-            ("python_version", "ara_playbooks_by_python_version", "python_version",
-                lambda pb: [pb.get("python_version") or "unknown"]),
-            ("user", "ara_playbooks_by_user", "user",
-                lambda pb: [pb.get("user") or "unknown"]),
+            ("controller", "ara_playbooks_by_controller", "ara_recorded_playbooks_by_controller", ["controller"],
+                lambda pb: [(pb.get("controller") or "unknown",)]),
+            ("ansible_version", "ara_playbooks_by_ansible_version", "ara_recorded_playbooks_by_ansible_version",
+                ["ansible_version"], lambda pb: [(pb.get("ansible_version") or "unknown",)]),
+            ("python_version", "ara_playbooks_by_python_version", "ara_recorded_playbooks_by_python_version",
+                ["python_version"], lambda pb: [(pb.get("python_version") or "unknown",)]),
+            ("user", "ara_playbooks_by_user", "ara_recorded_playbooks_by_user", ["user"],
+                lambda pb: [(pb.get("user") or "unknown",)]),
         ]
-        if self.playbook_name_breakdown:
-            dimensions.append(("playbook", "ara_playbooks_by_playbook", "playbook", lambda pb: [_playbook_name(pb)]))
-        if self.inventory_breakdown:
-            dimensions.append(("inventory", "ara_playbooks_by_inventory", "inventory", _inventory_values))
-        if self.limit_breakdown:
-            dimensions.append(("limited", "ara_playbooks_by_limited", "limited", _limited_value))
+        if self.playbook_breakdown:
+            dimensions.append((
+                "runs", "ara_playbook_runs", "ara_recorded_playbook_runs_total", ["playbook", "inventory"],
+                self._playbook_run_values,
+            ))
         if self.tags_breakdown:
-            dimensions.append(("tag", "ara_playbooks_by_tag", "tag", lambda pb: _tag_values(pb, "tags")))
-            dimensions.append(("skip_tag", "ara_playbooks_by_skip_tag", "skip_tag", lambda pb: _tag_values(pb, "skip_tags")))
+            dimensions.append(("tag", "ara_playbooks_by_tag", "ara_recorded_playbooks_by_tag", ["tag"],
+                lambda pb: [(t,) for t in _tag_values(pb, "tags")]))
+            dimensions.append(("skip_tag", "ara_playbooks_by_skip_tag", "ara_recorded_playbooks_by_skip_tag",
+                ["skip_tag"], lambda pb: [(t,) for t in _tag_values(pb, "skip_tags")]))
 
-        windowed = {dim_key: {} for dim_key, _, _, _ in dimensions}
+        windowed = {dim_key: {} for dim_key, _, _, _, _ in dimensions}
         durations = []
+        # Matched sum/count of run durations keyed by (playbook, inventory), for a
+        # low-cardinality avg-duration-per-playbook (gsum/gcount) without a full
+        # per-playbook histogram. Only runs that feed the wide ara_playbook_runs
+        # metric contribute, so --limit partial runs are excluded the same way.
+        run_duration_sum = {}
+        run_duration_count = {}
         for playbook in playbooks:
             status = playbook["status"]
-            for dim_key, _, _, extractor in dimensions:
-                for value in extractor(playbook):
-                    key = (value, status)
+            for dim_key, _, _, _, extractor in dimensions:
+                for values in extractor(playbook):
+                    key = (values, status)
                     windowed[dim_key][key] = windowed[dim_key].get(key, 0) + 1
 
             seconds = _duration_to_seconds(playbook["duration"])
             if seconds is not None:
                 durations.append(seconds)
+                if self.playbook_breakdown:
+                    for labels in self._playbook_run_values(playbook):
+                        run_duration_sum[labels] = run_duration_sum.get(labels, 0.0) + seconds
+                        run_duration_count[labels] = run_duration_count.get(labels, 0) + 1
 
         # Fold newly finalized playbooks into the monotonic counters.
-        self._playbook_counter.update(playbooks, [(dim_key, extractor) for dim_key, _, _, extractor in dimensions])
+        self._playbook_counter.update(
+            playbooks, [(dim_key, extractor) for dim_key, _, _, _, extractor in dimensions]
+        )
 
-        for dim_key, metric_name, label_name, _ in dimensions:
+        for dim_key, metric_name, _, label_names, _ in dimensions:
             gauge = GaugeMetricFamily(
                 metric_name,
-                "Number of recent playbooks grouped by %s and status (see ara_playbooks_window)" % label_name,
-                labels=[label_name, "status"],
+                "Number of recent playbooks grouped by %s and status (see ara_playbooks_window)"
+                % " + ".join(label_names),
+                labels=[*label_names, "status"],
             )
-            for (value, status), count in windowed[dim_key].items():
-                gauge.add_metric([value, status], count)
+            for (values, status), count in windowed[dim_key].items():
+                gauge.add_metric([*values, status], count)
             yield gauge
 
         # Emit the monotonic counters alongside their gauges. Each dimension is its
-        # own counter metric (mirroring the by_* gauge names) so a single metric
-        # name has one consistent label set, as Prometheus expects.
+        # own counter metric (mirroring the gauge names) so a single metric name has
+        # one consistent label set, as Prometheus expects.
         dim_meta = {
             dim_key: (
-                "ara_recorded_playbooks_by_%s" % label_name,
-                label_name,
+                counter_name,
+                label_names,
                 "Running total of playbooks recorded by ara, grouped by %s and final status. Monotonic; "
-                "use with increase()/rate() for exact activity (immune to recent-window churn)." % label_name,
+                "use with increase()/rate() for exact activity (immune to recent-window churn)."
+                % " + ".join(label_names),
             )
-            for dim_key, _, label_name, _ in dimensions
+            for dim_key, _, counter_name, label_names, _ in dimensions
         }
         yield from self._playbook_counter.emit(dim_meta)
 
@@ -712,18 +747,55 @@ class AraCollector(object):
             value=max(durations) if durations else 0.0,
         )
 
+        # Per-(playbook, inventory) matched sum/count of durations: divide to get the
+        # average run time per playbook and watch it over time. A gauge pair (not a
+        # histogram) so it adds only two series per distinct (playbook, inventory),
+        # and the base name differs from the ara_playbook_duration_seconds histogram
+        # above so their auto-generated _gsum/_gcount series never collide.
+        if self.playbook_breakdown:
+            gsum = GaugeMetricFamily(
+                "ara_playbook_runs_duration_seconds_gsum",
+                "Sum of playbook run durations in the recent window, grouped by playbook and inventory. "
+                "Divide by ara_playbook_runs_duration_seconds_gcount for the average run time.",
+                labels=["playbook", "inventory"],
+            )
+            gcount = GaugeMetricFamily(
+                "ara_playbook_runs_duration_seconds_gcount",
+                "Number of playbook runs with a measured duration in the recent window, grouped by playbook "
+                "and inventory. Denominator for ara_playbook_runs_duration_seconds_gsum.",
+                labels=["playbook", "inventory"],
+            )
+            for (playbook_name, inventory), total in run_duration_sum.items():
+                gsum.add_metric([playbook_name, inventory], total)
+            for (playbook_name, inventory), count in run_duration_count.items():
+                gcount.add_metric([playbook_name, inventory], count)
+            yield gsum
+            yield gcount
+
+    def _playbook_run_values(self, playbook):
+        """Label-tuple(s) a playbook contributes to the wide ara_playbook_runs
+        metric: a single (playbook, inventory) pair, or none at all for --limit
+        partial runs unless count_limited_runs is set (partial runs touch only a
+        subset of hosts and would distort run-over-run comparisons)."""
+        if not self.count_limited_runs and _is_limited(playbook):
+            return []
+        return [(_playbook_name(playbook), _inventory_label(playbook))]
+
     def _collect_task_breakdowns(self):
         """
         Tier 2: over the --task-limit most recent tasks, the task duration
         distribution (gauge histogram + max, mirroring the playbook metrics) plus
-        optional breakdowns by role, module (action), tag and task name, each as a
-        windowed gauge and a monotonic counter.
+        optional breakdowns: the wide ara_task_runs{role, action, status} series
+        (+ monotonic counter) and the list-valued ara_tasks_by_tag / opt-in
+        ara_tasks_by_name series.
 
         A task is one action (one module invocation) run across every host it
         targets, so its duration is the wall-clock time for the whole fan-out.
-        Role is derived from the task's file path; module is task.action. Task
-        name is high cardinality and therefore opt-in (and can be bounded further
-        with an allowlist). Tasks use their own bucket edges (TASK_DURATION_BUCKETS).
+        Role is derived from the task's file path; module is task.action -- both
+        scalar and correlated, so they share the wide ara_task_runs metric (slice
+        with sum by (role) (...) etc.). Task name is high cardinality and
+        therefore opt-in (and can be bounded further with an allowlist). Tasks use
+        their own bucket edges (TASK_DURATION_BUCKETS).
 
         The window is one page of --task-limit tasks ordered by most recent.
         """
@@ -740,49 +812,63 @@ class AraCollector(object):
         )
 
         dimensions = []
-        if self.role_breakdown:
-            dimensions.append(("role", "ara_tasks_by_role", "role", lambda t: [_role_from_path(t.get("path"))]))
-        if self.action_breakdown:
-            dimensions.append(("action", "ara_tasks_by_action", "action", lambda t: [t.get("action") or "unknown"]))
+        if self.task_breakdown:
+            dimensions.append((
+                "runs", "ara_task_runs", "ara_recorded_task_runs_total", ["role", "action"],
+                lambda t: [(_role_from_path(t.get("path")), t.get("action") or "unknown")],
+            ))
         if self.tags_breakdown:
-            dimensions.append(
-                ("tag", "ara_tasks_by_tag", "tag", lambda t: [str(x) for x in _as_list(t.get("tags"))] or ["unset"])
-            )
+            dimensions.append((
+                "tag", "ara_tasks_by_tag", "ara_recorded_tasks_by_tag", ["tag"],
+                lambda t: [(str(x),) for x in _as_list(t.get("tags"))] or [("unset",)],
+            ))
         if self.task_name_breakdown:
-            dimensions.append(("name", "ara_tasks_by_name", "name", lambda t: [self._task_name_value(t)]))
+            dimensions.append((
+                "name", "ara_tasks_by_name", "ara_recorded_tasks_by_name", ["name"],
+                lambda t: [(self._task_name_value(t),)],
+            ))
 
-        windowed = {dim_key: {} for dim_key, _, _, _ in dimensions}
+        windowed = {dim_key: {} for dim_key, _, _, _, _ in dimensions}
         durations = []
+        # Matched sum/count of task durations keyed by (role, action), for a
+        # low-cardinality avg-duration-per-role/module (gsum/gcount) pair.
+        run_duration_sum = {}
+        run_duration_count = {}
         for task in tasks:
             status = task["status"]
-            for dim_key, _, _, extractor in dimensions:
-                for value in extractor(task):
-                    key = (value, status)
+            for dim_key, _, _, _, extractor in dimensions:
+                for values in extractor(task):
+                    key = (values, status)
                     windowed[dim_key][key] = windowed[dim_key].get(key, 0) + 1
             seconds = _duration_to_seconds(task["duration"])
             if seconds is not None:
                 durations.append(seconds)
+                if self.task_breakdown:
+                    labels = (_role_from_path(task.get("path")), task.get("action") or "unknown")
+                    run_duration_sum[labels] = run_duration_sum.get(labels, 0.0) + seconds
+                    run_duration_count[labels] = run_duration_count.get(labels, 0) + 1
 
-        self._task_counter.update(tasks, [(dim_key, extractor) for dim_key, _, _, extractor in dimensions])
+        self._task_counter.update(tasks, [(dim_key, extractor) for dim_key, _, _, _, extractor in dimensions])
 
-        for dim_key, metric_name, label_name, _ in dimensions:
+        for dim_key, metric_name, _, label_names, _ in dimensions:
             gauge = GaugeMetricFamily(
                 metric_name,
-                "Number of recent tasks grouped by %s and status (see ara_tasks_window)" % label_name,
-                labels=[label_name, "status"],
+                "Number of recent tasks grouped by %s and status (see ara_tasks_window)" % " + ".join(label_names),
+                labels=[*label_names, "status"],
             )
-            for (value, status), count in windowed[dim_key].items():
-                gauge.add_metric([value, status], count)
+            for (values, status), count in windowed[dim_key].items():
+                gauge.add_metric([*values, status], count)
             yield gauge
 
         dim_meta = {
             dim_key: (
-                "ara_recorded_tasks_by_%s" % label_name,
-                label_name,
+                counter_name,
+                label_names,
                 "Running total of tasks recorded by ara, grouped by %s and final status. Monotonic; "
-                "use with increase()/rate() for exact activity (immune to recent-window churn)." % label_name,
+                "use with increase()/rate() for exact activity (immune to recent-window churn)."
+                % " + ".join(label_names),
             )
-            for dim_key, _, label_name, _ in dimensions
+            for dim_key, _, counter_name, label_names, _ in dimensions
         }
         yield from self._task_counter.emit(dim_meta)
 
@@ -797,6 +883,29 @@ class AraCollector(object):
             "Maximum duration of tasks in the recent window (see ara_tasks_window)",
             value=max(durations) if durations else 0.0,
         )
+
+        # Per-(role, action) matched sum/count of durations: divide to get the
+        # average task time per role/module and watch it over time. Gauge pair, base
+        # name distinct from the ara_task_duration_seconds histogram above.
+        if self.task_breakdown:
+            gsum = GaugeMetricFamily(
+                "ara_task_runs_duration_seconds_gsum",
+                "Sum of task durations in the recent window, grouped by role and module (action). "
+                "Divide by ara_task_runs_duration_seconds_gcount for the average task time.",
+                labels=["role", "action"],
+            )
+            gcount = GaugeMetricFamily(
+                "ara_task_runs_duration_seconds_gcount",
+                "Number of tasks with a measured duration in the recent window, grouped by role and module "
+                "(action). Denominator for ara_task_runs_duration_seconds_gsum.",
+                labels=["role", "action"],
+            )
+            for (role, action), total in run_duration_sum.items():
+                gsum.add_metric([role, action], total)
+            for (role, action), count in run_duration_count.items():
+                gcount.add_metric([role, action], count)
+            yield gsum
+            yield gcount
 
     def _task_name_value(self, task):
         """Task name for the opt-in name breakdown, folding anything not in the
@@ -1130,30 +1239,34 @@ class PrometheusExporter(Command):
             type=int,
         )
         parser.add_argument(
-            "--playbook-name-breakdown",
+            "--playbook-breakdown",
             action=argparse.BooleanOptionalAction,
             default=True,
             help=(
-                "Emit ara_playbooks_by_playbook{playbook,status} (+ recorded_ counter), grouping recent "
-                "playbooks by name/path basename. Bounded by the number of distinct playbooks (default: on)."
+                "Emit the wide ara_playbook_runs{playbook,inventory,status} series (+ recorded_ counter), "
+                "grouping recent playbook runs by name and inventory on a single metric so you can slice "
+                "and correlate in PromQL (sum by (playbook) (...), {inventory=\"prod.ini\"}, ...). "
+                "Cardinality is the number of distinct (playbook, inventory) pairs observed (default: on)."
             ),
         )
         parser.add_argument(
-            "--inventory-breakdown",
+            "--task-breakdown",
             action=argparse.BooleanOptionalAction,
             default=True,
             help=(
-                "Emit ara_playbooks_by_inventory{inventory,status} (+ recorded_ counter) from the run's "
-                "--inventory argument, reduced to basenames to stay bounded (default: on)."
+                "Emit the wide ara_task_runs{role,action,status} series (+ recorded_ counter), grouping "
+                "recent tasks by role (from the task file path) and module (task.action) on a single metric "
+                "(default: on)."
             ),
         )
         parser.add_argument(
-            "--limit-breakdown",
+            "--count-limited-runs",
             action=argparse.BooleanOptionalAction,
-            default=True,
+            default=False,
             help=(
-                "Emit ara_playbooks_by_limited{limited,status} (+ recorded_ counter): whether the run used "
-                "--limit. Only the boolean is exposed; the raw host pattern is unbounded (default: on)."
+                "Fold --limit partial runs into ara_playbook_runs. Off by default: a limited run touches "
+                "only a host subset and would distort run-over-run comparisons, so such runs are skipped "
+                "from the wide playbook metric. The raw --limit host pattern is never exposed as a label."
             ),
         )
         parser.add_argument(
@@ -1163,25 +1276,8 @@ class PrometheusExporter(Command):
             help=(
                 "Emit tag breakdowns: ara_playbooks_by_tag / _by_skip_tag from the run's --tags/--skip-tags, "
                 "and ara_tasks_by_tag from per-task tags (+ recorded_ counters). Tag lists are split into "
-                "individual values so cardinality stays additive (default: on)."
-            ),
-        )
-        parser.add_argument(
-            "--role-breakdown",
-            action=argparse.BooleanOptionalAction,
-            default=True,
-            help=(
-                "Emit ara_tasks_by_role{role,status} (+ recorded_ counter), grouping recent tasks by the "
-                "role derived from their file path (default: on)."
-            ),
-        )
-        parser.add_argument(
-            "--action-breakdown",
-            action=argparse.BooleanOptionalAction,
-            default=True,
-            help=(
-                "Emit ara_tasks_by_action{action,status} (+ recorded_ counter), grouping recent tasks by "
-                "module (task.action) -- e.g. to see which module fails most (default: on)."
+                "individual values on their own metric (kept off the wide run metrics to avoid "
+                "double-counting runs that carry several tags) so cardinality stays additive (default: on)."
             ),
         )
         parser.add_argument(
@@ -1269,12 +1365,10 @@ class PrometheusExporter(Command):
             per_playbook_limit=args.per_playbook_limit,
             per_task_limit=args.per_task_limit,
             per_host_limit=args.per_host_limit,
-            playbook_name_breakdown=args.playbook_name_breakdown,
-            inventory_breakdown=args.inventory_breakdown,
-            limit_breakdown=args.limit_breakdown,
+            playbook_breakdown=args.playbook_breakdown,
+            task_breakdown=args.task_breakdown,
             tags_breakdown=args.tags_breakdown,
-            role_breakdown=args.role_breakdown,
-            action_breakdown=args.action_breakdown,
+            count_limited_runs=args.count_limited_runs,
             task_name_breakdown=args.task_name_breakdown,
             task_name_allowlist=task_name_allowlist,
             refresh_interval=args.refresh_interval,

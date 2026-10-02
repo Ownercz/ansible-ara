@@ -63,8 +63,10 @@ Note: Internal ARA container hostnames (for example ara-server) are always appen
 - ara_prometheus_https_port: Host HTTPS port for Prometheus metrics endpoint (default 8446).
 - ara_prometheus_patch_exporter: Overwrite the pip-installed exporter with the extended one in files/ (default true).
 - ara_prometheus_ara_version: Pin the ara version the exporter image is built on for reproducible builds (default "" = latest).
-- ara_prometheus_playbook_name_breakdown / _inventory_breakdown / _limit_breakdown / _tags_breakdown: Extra low-cardinality playbook breakdowns by name, inventory, --limit (boolean) and --tags/--skip-tags (default true).
-- ara_prometheus_role_breakdown / _action_breakdown: Extra task breakdowns by role and module (default true).
+- ara_prometheus_playbook_breakdown: Emit the wide ara_playbook_runs{playbook,inventory,status} series + counter (default true).
+- ara_prometheus_task_breakdown: Emit the wide ara_task_runs{role,action,status} series + counter (default true).
+- ara_prometheus_tags_breakdown: Emit list-valued tag breakdowns (ara_playbooks_by_tag / _by_skip_tag / ara_tasks_by_tag) (default true).
+- ara_prometheus_count_limited_runs: Include --limit partial runs in ara_playbook_runs; off by default as partial runs skew run-over-run comparisons.
 - ara_prometheus_task_name_breakdown: Per-task-name breakdown; high cardinality, off by default. Bound it with ara_prometheus_task_name_allowlist.
 - ara_enable_tls: Enable HTTPS listener and certificate usage.
 - ara_nginx_listen_ssl_only: When true and TLS is enabled, expose/listen only SSL (default true).

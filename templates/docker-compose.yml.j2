@@ -114,12 +114,10 @@ services:
       - --host-limit
       - "{{ ara_prometheus_host_limit }}"
 {% if ara_prometheus_patch_exporter %}
-      - --{{ 'playbook-name-breakdown' if ara_prometheus_playbook_name_breakdown else 'no-playbook-name-breakdown' }}
-      - --{{ 'inventory-breakdown' if ara_prometheus_inventory_breakdown else 'no-inventory-breakdown' }}
-      - --{{ 'limit-breakdown' if ara_prometheus_limit_breakdown else 'no-limit-breakdown' }}
+      - --{{ 'playbook-breakdown' if ara_prometheus_playbook_breakdown else 'no-playbook-breakdown' }}
+      - --{{ 'task-breakdown' if ara_prometheus_task_breakdown else 'no-task-breakdown' }}
       - --{{ 'tags-breakdown' if ara_prometheus_tags_breakdown else 'no-tags-breakdown' }}
-      - --{{ 'role-breakdown' if ara_prometheus_role_breakdown else 'no-role-breakdown' }}
-      - --{{ 'action-breakdown' if ara_prometheus_action_breakdown else 'no-action-breakdown' }}
+      - --{{ 'count-limited-runs' if ara_prometheus_count_limited_runs else 'no-count-limited-runs' }}
       - --{{ 'task-name-breakdown' if ara_prometheus_task_name_breakdown else 'no-task-name-breakdown' }}
 {% if ara_prometheus_task_name_allowlist %}
       - --task-name-allowlist
