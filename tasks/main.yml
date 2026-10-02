@@ -136,6 +136,7 @@
     owner: root
     group: root
     mode: "0755"
+  register: ara_prometheus_entrypoint_result
   when:
     - ara_prometheus_enabled | bool
     - ara_prometheus_build_locally | bool
@@ -148,6 +149,7 @@
     owner: root
     group: root
     mode: "0644"
+  register: ara_prometheus_exporter_result
   when:
     - ara_prometheus_enabled | bool
     - ara_prometheus_build_locally | bool
@@ -161,6 +163,7 @@
     owner: root
     group: root
     mode: "0644"
+  register: ara_prometheus_dockerfile_result
   when:
     - ara_prometheus_enabled | bool
     - ara_prometheus_build_locally | bool

@@ -5,4 +5,9 @@
     --project-name {{ ara_compose_project_name }}
     -f {{ ara_compose_dir }}/docker-compose.yml
     up -d --force-recreate --remove-orphans
+    {{ '--build' if (
+      ara_prometheus_entrypoint_result.changed | default(false) or
+      ara_prometheus_exporter_result.changed | default(false) or
+      ara_prometheus_dockerfile_result.changed | default(false)
+    ) else '' }}
   changed_when: false
